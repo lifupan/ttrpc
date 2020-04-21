@@ -459,6 +459,45 @@ func TestServerRequestTimeout(t *testing.T) {
 	}
 }
 
+func TestServerConnectionsLeak(t *testing.T) {
+	var (
+		ctx, cancel     = context.WithDeadline(context.Background(), time.Now().Add(10*time.Minute))
+		server          = mustServer(t)(NewServer())
+		addr, listener  = newTestListener(t)
+		testImpl        = &testingServer{}
+	)
+	defer cancel()
+	defer listener.Close()
+
+	registerTestingService(server, testImpl)
+
+	go server.Serve(ctx, listener)
+	defer server.Shutdown(ctx)
+
+	count := 10
+	connections_cleanup := func()[]
+	for i := 0; i < count; i++ {
+		client, cleanup = newTestClient(t, addr)
+		connections_cleanup = append(connections_cleanup, cleanup)
+		connections_count := server.countConnection()
+		if connections_count != i + 1 {
+			t.Fatalf("unexpected connections count: %d, expected: %d", connections_count, i + 1)
+		}
+	}
+
+	// close the connections
+	for f := range connections_cleanup {
+		f()
+	}
+
+	time.Sleep(100 * time.Millisecond)
+	
+	connections_count := server.countConnection()
+	if connections_count != 0 {
+		t.Fatalf("unexpected connections count: %d, expected: %d", connections_count, 0)
+	}
+}
+
 func BenchmarkRoundTrip(b *testing.B) {
 	var (
 		ctx             = context.Background()

@@ -216,6 +216,13 @@ func (s *Server) delConnection(c *serverConn) {
 	delete(s.connections, c)
 }
 
+func (s *Server) countConnection(c *serverConn) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return len(s.connections)
+}
+
 func (s *Server) closeIdleConns() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
